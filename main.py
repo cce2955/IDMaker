@@ -99,12 +99,12 @@ def generate_card(user_name, id_number):
     # Draw the organization name and return info in the right column
     right_column_x = column_width
     right_column_y = padding * 3
-    organization_name = "Your Organization"
+    organization_name = "Henry County Schools"
     organization_font_size = 80
     organization_font = ImageFont.truetype(font_path, organization_font_size)
     draw.text((right_column_x, right_column_y), organization_name, font=organization_font, fill='black')
 
-    return_info = "Return ID to:\nYour Organization\nAddress\nCity, State, ZIP"
+    return_info = "If found\nReturn to:\nHenry County Schools\n396 Tomlinson Street\nMcDonough, GA, 30253"
     return_info_font_size = 80
     return_info_font = ImageFont.truetype(font_path, return_info_font_size)
     return_info_y = right_column_y + organization_font.getsize(organization_name)[1] + padding

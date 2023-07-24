@@ -1,0 +1,5 @@
+PyMuPDF
+python-barcode
+Pillow
+fpdf
+pytesseract
