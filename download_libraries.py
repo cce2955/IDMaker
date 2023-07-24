@@ -2,6 +2,7 @@ import os
 import sys
 import time
 import pandas as pd
+from PIL import Image, ImageDraw, ImageFont
 import traceback
 from selenium import webdriver
 from selenium.common.exceptions import NoSuchElementException, TimeoutException
@@ -94,6 +95,58 @@ def extract_student_data(url):
     finally:
         # Close the web browser.
         driver.quit()
+def create_id_cards(csv_path):
+    # Load the CSV data into a DataFrame.
+    df = pd.read_csv(csv_path)
+
+    # Filter out students who don't have a Chromebook.
+    df = df[df["Has HP Chromebook"] == False]
+
+    # Load the logo image.
+    logo_path = "logo.jpg"  # Replace with the path to your logo image.
+    logo = Image.open(logo_path)
+
+    # Set the card size and margins.
+    card_width, card_height = 600, 400
+    margin = 20
+
+    # Create an output folder for the ID cards.
+    output_folder = "Cards"
+    if not os.path.exists(output_folder):
+        os.makedirs(output_folder)
+
+    # Loop through the filtered DataFrame and create ID cards for each student.
+    for index, row in df.iterrows():
+        student_name = row["Student Name"]
+        student_id = row["School ID"]
+        teacher_name = row["Teacher"]
+
+        # Create a new blank image for the ID card.
+        card = Image.new("RGB", (card_width, card_height), color="white")
+        draw = ImageDraw.Draw(card)
+
+        # Paste the logo at the top left of the card.
+        card.paste(logo, (margin, margin))
+
+        # Add student name.
+        font = ImageFont.truetype("arial.ttf", 20)  # Replace with the desired font and size.
+        draw.text((margin, margin + logo.height + margin), student_name, fill="black", font=font)
+
+        # Add student ID as barcode (for illustration purposes).
+        barcode_height = 100
+        draw.rectangle([margin, card_height - margin - barcode_height, card_width - margin, card_height - margin], fill="black")
+        font = ImageFont.truetype("arial.ttf", 40)  # Replace with the desired font and size.
+        draw.text((margin + 10, card_height - margin - barcode_height + 10), student_id, fill="white", font=font)
+
+        # Add teacher name.
+        font = ImageFont.truetype("arial.ttf", 20)  # Replace with the desired font and size.
+        draw.text((margin, card_height - margin - barcode_height - margin - font.getsize(teacher_name)[1]),
+                  teacher_name, fill="black", font=font)
+
+        # Save the ID card as an image file.
+        card_filename = f"{student_name}.png"
+        card_path = os.path.join(output_folder, card_filename)
+        card.save(card_path)
 
 def main():
     # Check if a URL argument is provided
@@ -118,6 +171,17 @@ def main():
             file_path = os.path.join(data_folder, file)
             df = pd.read_csv(file_path)
             df.to_csv(total_csv_path, mode='a', index=False, header=not os.path.exists(total_csv_path))
+            
+    # Check if a CSV file argument is provided.
+    if len(sys.argv) < 2:
+        print("Error: CSV file not provided.")
+        sys.exit(1)
+
+    # Get the CSV file path from the command-line argument.
+    csv_path = sys.argv[1]
+
+    # Generate ID cards for students without a Chromebook.
+    create_id_cards(csv_path)
 
 if __name__ == "__main__":
     main()
