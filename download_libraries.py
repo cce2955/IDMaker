@@ -99,6 +99,23 @@ def extract_student_data(url):
     finally:
         # Close the web browser.
         driver.quit()
+
+import shutil
+
+def clear_cards_folder(output_folder):
+    # Delete the entire "Cards" folder if it exists.
+    if os.path.exists(output_folder):
+        try:
+            shutil.rmtree(output_folder)
+            print(f"Deleted the '{output_folder}' folder.")
+        except Exception as e:
+            print(f"Error while deleting the '{output_folder}' folder: {e}")
+
+    # Recreate the "Cards" folder.
+    os.makedirs(output_folder)
+    print(f"Recreated the '{output_folder}' folder.")
+
+
 def create_id_cards(csv_path):
     # Load the CSV data into a DataFrame with utf-8 encoding.
     df = pd.read_csv(csv_path, encoding="utf-8")
@@ -118,6 +135,9 @@ def create_id_cards(csv_path):
     output_folder = "Cards"
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
+    else:
+        # Clear the "Cards" folder before generating new ID cards.
+        clear_cards_folder(output_folder)
 
     # Read organization details from a text file.
     with open("cardinfo/org_info.txt", "r") as file:
@@ -145,10 +165,10 @@ def create_id_cards(csv_path):
         draw = ImageDraw.Draw(card)
 
         # Squish the logo to the left side of the card (60% of the left side).
-        logo_width = int(card_width * 0.6)
+        logo_width = int(card_width * 1.4)
         logo_height = int(logo_width * logo.size[1] / logo.size[0])
         logo_resized = logo.resize((logo_width, logo_height))
-        card.paste(logo_resized, (margin, margin))
+        #card.paste(logo_resized, (margin, margin))
 
         # Calculate the height of each section
         logo_height = int(card_height * 0.2)
