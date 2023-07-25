@@ -119,6 +119,9 @@ def clear_cards_folder(output_folder):
 def create_id_cards(csv_path):
     # Load the CSV data into a DataFrame with utf-8 encoding.
     df = pd.read_csv(csv_path, encoding="utf-8")
+    
+    # Split the teacher's name and take only the last name.
+    df["Teacher"] = df["Teacher"].apply(lambda x: x.split()[-1])
 
     # Filter out students who don't have a Chromebook.
     df = df[df["Has HP Chromebook"] == False]
@@ -179,12 +182,17 @@ def create_id_cards(csv_path):
         # Resize the logo to the new height
         logo_width = int(logo_height * logo.size[0] / logo.size[1])
         logo_resized = logo.resize((logo_width, logo_height))
-        card.paste(logo_resized, (margin, margin))
+
+        # Calculate the position for the logo (push it to the right by 10%)
+        logo_position = (int(card_width * 0.9 - logo_width), margin + margin)
+        card.paste(logo_resized, logo_position)
 
         # Add student name (slightly bigger font).
         font_student_name = ImageFont.truetype("arial.ttf", 30)  # Increase the font size.
-        student_name_position = (int(card_width * 0.1), margin + logo_height + margin)  # Move student name to the right by 10%
+        # Move student name up by 10 pixels to touch the bottom of the logo
+        student_name_position = (int(card_width * 0.1) + 8, margin + logo_height - 10)
         draw.text(student_name_position, student_name, fill="black", font=font_student_name)
+
 
         # Add student ID as a scannable barcode (type 128).
         barcode_value = student_id
@@ -196,27 +204,24 @@ def create_id_cards(csv_path):
         new_width = int(barcode_image_width * (barcode_height / barcode_image_height) * 1.2)
         barcode_image_resized = barcode_image_rendered.resize((new_width, barcode_height))
 
-        # Calculate the position for the barcode (move it to the left by 15% more)
-        barcode_position = (int(card_width * 0.15), margin + logo_height + student_name_height + margin)
+        # Calculate the position for the barcode (move it to the right by 8 pixels, touching the bottom of the student name, and move it up by 10 pixels)
+        barcode_position = (int(card_width * 0.1) + 18, margin + logo_height + student_name_height - 40)
         card.paste(barcode_image_resized, barcode_position)
 
         # Add teacher name under the barcode.
         font_teacher_name = ImageFont.truetype("arial.ttf", 30)  # Adjust the font size as needed.
-        bbox = font_teacher_name.getbbox(teacher_name)
-        teacher_name_width = bbox[2] - bbox[0]
-        teacher_name_height = bbox[3] - bbox[1]
-        # Get the teacher's last name.
-        teacher_name = row["Teacher"].split()[-1]
-
-
-        # Calculate the position for the teacher name (move it to the left by 15% more)
-        teacher_name_position = (int(card_width * 0.15), margin + logo_height + student_name_height + barcode_height + margin)
+        
+        # Calculate the position for the teacher name (move it to the right by 8 pixels, touching the bottom of the barcode with 5px padding, and move it up by 10 pixels)
+        teacher_name_position = (int(card_width * 0.1) + 25, margin + logo_height + student_name_height + barcode_height - 50)
         draw.text(teacher_name_position, teacher_name, fill="black", font=font_teacher_name)
+
 
         # Add return information on the right side of the card.
         return_info_font = ImageFont.truetype("arial.ttf", 20)  # Adjust the font size as needed.
         return_info = f"Belongs to\n {organization},\n return to:\n {address},\n {state},\n {zip_code}.\n {phone_number}"
-        draw.text((int(card_width * 0.6), int(card_height * 0.4)), return_info, fill="black", font=return_info_font)
+        # Move return info 5 pixels to the left
+        return_info_position = (int(card_width * 0.6) - 20, int(card_height * 0.4))
+        draw.text(return_info_position, return_info, fill="black", font=return_info_font)
 
         # Save the ID card as an image file.
         card_filename = f"{student_name}.png"
