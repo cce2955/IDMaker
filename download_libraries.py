@@ -11,7 +11,8 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from barcode import Code128
 from barcode.writer import ImageWriter
-
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import letter
 
 def extract_student_data(url):
     # Create a new instance of the Firefox web driver.
@@ -126,6 +127,12 @@ def create_id_cards(csv_path):
         state = lines[2].strip()
         zip_code = lines[3].strip()
         phone_number = lines[4].strip()
+    
+    # Create a new image for the sheet.
+    sheet_width, sheet_height = 2550, 3300  # Size for a standard letter sheet.
+    cards_per_sheet = 10
+    card_index = 0
+    sheet = Image.new("RGB", (sheet_width, sheet_height), color="white")
 
     # Loop through the filtered DataFrame and create ID cards for each student.
     for index, row in df.iterrows():
@@ -178,6 +185,9 @@ def create_id_cards(csv_path):
         bbox = font_teacher_name.getbbox(teacher_name)
         teacher_name_width = bbox[2] - bbox[0]
         teacher_name_height = bbox[3] - bbox[1]
+        # Get the teacher's last name.
+        teacher_name = row["Teacher"].split()[-1]
+
 
         # Calculate the position for the teacher name (move it to the left by 15% more)
         teacher_name_position = (int(card_width * 0.15), margin + logo_height + student_name_height + barcode_height + margin)
@@ -193,13 +203,94 @@ def create_id_cards(csv_path):
         card_path = os.path.join(output_folder, card_filename)
         card.save(card_path)
 
+        # Paste the ID card onto the sheet.
+        card_position = ((card_index % 2) * card_width, (card_index // 2) * card_height)
+        sheet.paste(card, card_position)
+        card_index += 1
+
+        # If the sheet is full or if this is the last student, save the sheet.
+        if card_index == cards_per_sheet or index == len(df) - 1:
+            sheet_filename = f"Sheet_{index // cards_per_sheet + 1}"
+            sheet_path_jpg = os.path.join(output_folder, f"{sheet_filename}.jpg")
+            sheet_path_png = os.path.join(output_folder, f"{sheet_filename}.png")
+            sheet_path_pdf = os.path.join(output_folder, f"{sheet_filename}.pdf")
+            sheet.save(sheet_path_jpg)
+            sheet.save(sheet_path_png)
+
+            # Convert the sheet image to a PDF.
+            c = canvas.Canvas(sheet_path_pdf, pagesize=letter)
+            c.drawImage(sheet_path_jpg, 0, 0, *letter)
+            c.showPage()
+            c.save()
+
+            # Create a new image for the next sheet.
+            sheet = Image.new("RGB", (sheet_width, sheet_height), color="white")
+            card_index = 0
+
+            # Save the ID card as an image file.
+            card_filename = f"{student_name}.png"
+            card_path = os.path.join(output_folder, card_filename)
+            card.save(card_path)
+
+            # Compile the cards into sheets and output them in different formats.
+            compile_cards_to_sheets(output_folder, ["JPEG", "PDF", "PNG"])
+
+
+def compile_cards_to_sheets(output_folder, formats):
+    # Get the list of card images.
+    card_images = [f for f in os.listdir(output_folder) if f.endswith(".png")]
+
+    # Set the number of cards per sheet and the size of each card.
+    cards_per_sheet = 8
+    card_width, card_height = 600, 400
+
+    # Calculate the size of the sheet.
+    sheet_width = card_width * 2
+    sheet_height = card_height * 4
+
+    # Create output folders for each format.
+    for fmt in formats:
+        fmt_folder = os.path.join(output_folder, fmt)
+        if not os.path.exists(fmt_folder):
+            os.makedirs(fmt_folder)
+
+    # Loop through the card images and add them to sheets.
+    for i in range(0, len(card_images), cards_per_sheet):
+        # Create a new blank sheet.
+        sheet = Image.new("RGB", (sheet_width, sheet_height), color="white")
+
+        # Add the cards to the sheet.
+        for j in range(cards_per_sheet):
+            if i + j < len(card_images):
+                # Open the card image.
+                card_image = Image.open(os.path.join(output_folder, card_images[i + j]))
+
+                # Calculate the position of the card on the sheet.
+                pos_x = (j % 2) * card_width
+                pos_y = (j // 2) * card_height
+
+                # Paste the card image onto the sheet.
+                sheet.paste(card_image, (pos_x, pos_y))
+
+        # Save the sheet in each format.
+        for fmt in formats:
+            if fmt == "PDF":
+                # Convert the sheet to PDF.
+                pdf_path = os.path.join(output_folder, fmt, f"sheet_{i // cards_per_sheet + 1}.pdf")
+                pdf = canvas.Canvas(pdf_path, pagesize=letter)
+                pdf.drawInlineImage(sheet, 0, 0, width=sheet_width, height=sheet_height)
+                pdf.save()
+            else:
+                # Save the sheet as an image.
+                image_path = os.path.join(output_folder, fmt, f"sheet_{i // cards_per_sheet + 1}.{fmt.lower()}")
+                sheet.save(image_path, fmt.upper())
 
 def main():
     # Check if a URL argument is provided
     if len(sys.argv) < 2:
         print("Error: URL not provided.")
         sys.exit(1)
-    
+    """
     # Get the URL from the command-line argument
     url = sys.argv[1]
 
@@ -220,10 +311,10 @@ def main():
 
     # Provide the CSV path directly to the create_id_cards function.
     create_id_cards(total_csv_path)
-    
-     # Provide the CSV path directly to the create_id_cards function.
-     #Comment out the above if you just want to test the card function
-    #csv_path = "Data/total.csv"
-    #create_id_cards(csv_path)
+    """
+    # Provide the CSV path directly to the create_id_cards function.
+    # #Comment out the above if you just want to test the card function
+    csv_path = "Data/total.csv"
+    create_id_cards(csv_path)
 if __name__ == "__main__":
     main()

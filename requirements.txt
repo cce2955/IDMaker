@@ -3,3 +3,4 @@ selenium>=3.0.0
 pandas
 pillow
 python-barcode
+reportlab
