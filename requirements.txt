@@ -2,3 +2,4 @@ requests>=2.0.0
 selenium>=3.0.0
 pandas
 pillow
+python-barcode

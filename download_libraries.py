@@ -9,6 +9,9 @@ from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from barcode import Code128
+from barcode.writer import ImageWriter
+
 
 def extract_student_data(url):
     # Create a new instance of the Firefox web driver.
@@ -19,7 +22,7 @@ def extract_student_data(url):
         driver.get(url)
 
         # Use explicit wait to wait for the presence of the 'class-students' div.
-        wait = WebDriverWait(driver, 30)
+        wait = WebDriverWait(driver, 300)
         div_element = wait.until(EC.presence_of_element_located((By.CLASS_NAME, "class-students")))
         print("The 'class-students' div exists on the webpage.")
 
@@ -96,8 +99,8 @@ def extract_student_data(url):
         # Close the web browser.
         driver.quit()
 def create_id_cards(csv_path):
-    # Load the CSV data into a DataFrame.
-    df = pd.read_csv(csv_path)
+    # Load the CSV data into a DataFrame with utf-8 encoding.
+    df = pd.read_csv(csv_path, encoding="utf-8")
 
     # Filter out students who don't have a Chromebook.
     df = df[df["Has HP Chromebook"] == False]
@@ -108,52 +111,95 @@ def create_id_cards(csv_path):
 
     # Set the card size and margins.
     card_width, card_height = 600, 400
-    margin = 20
+    margin = 10
 
     # Create an output folder for the ID cards.
     output_folder = "Cards"
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
 
+    # Read organization details from a text file.
+    with open("cardinfo/org_info.txt", "r") as file:
+        lines = file.readlines()
+        organization = lines[0].strip()
+        address = lines[1].strip()
+        state = lines[2].strip()
+        zip_code = lines[3].strip()
+        phone_number = lines[4].strip()
+
     # Loop through the filtered DataFrame and create ID cards for each student.
     for index, row in df.iterrows():
         student_name = row["Student Name"]
-        student_id = row["School ID"]
+        student_id = str(row["School ID"])  # Convert student_id to string
         teacher_name = row["Teacher"]
 
         # Create a new blank image for the ID card.
         card = Image.new("RGB", (card_width, card_height), color="white")
         draw = ImageDraw.Draw(card)
 
-        # Paste the logo at the top left of the card.
-        card.paste(logo, (margin, margin))
+        # Squish the logo to the left side of the card (60% of the left side).
+        logo_width = int(card_width * 0.6)
+        logo_height = int(logo_width * logo.size[1] / logo.size[0])
+        logo_resized = logo.resize((logo_width, logo_height))
+        card.paste(logo_resized, (margin, margin))
 
-        # Add student name.
-        font = ImageFont.truetype("arial.ttf", 20)  # Replace with the desired font and size.
-        draw.text((margin, margin + logo.height + margin), student_name, fill="black", font=font)
+        # Calculate the height of each section
+        logo_height = int(card_height * 0.2)
+        student_name_height = int(card_height * 0.2)
+        barcode_height = int(card_height * 0.45)
+        teacher_name_height = int(card_height * 0.2)
 
-        # Add student ID as barcode (for illustration purposes).
-        barcode_height = 100
-        draw.rectangle([margin, card_height - margin - barcode_height, card_width - margin, card_height - margin], fill="black")
-        font = ImageFont.truetype("arial.ttf", 40)  # Replace with the desired font and size.
-        draw.text((margin + 10, card_height - margin - barcode_height + 10), student_id, fill="white", font=font)
+        # Resize the logo to the new height
+        logo_width = int(logo_height * logo.size[0] / logo.size[1])
+        logo_resized = logo.resize((logo_width, logo_height))
+        card.paste(logo_resized, (margin, margin))
 
-        # Add teacher name.
-        font = ImageFont.truetype("arial.ttf", 20)  # Replace with the desired font and size.
-        draw.text((margin, card_height - margin - barcode_height - margin - font.getsize(teacher_name)[1]),
-                  teacher_name, fill="black", font=font)
+        # Add student name (slightly bigger font).
+        font_student_name = ImageFont.truetype("arial.ttf", 30)  # Increase the font size.
+        student_name_position = (int(card_width * 0.1), margin + logo_height + margin)  # Move student name to the right by 10%
+        draw.text(student_name_position, student_name, fill="black", font=font_student_name)
+
+        # Add student ID as a scannable barcode (type 128).
+        barcode_value = student_id
+        barcode_image = Code128(barcode_value, writer=ImageWriter())
+        barcode_image_rendered = barcode_image.render(text=barcode_value)
+        barcode_image_width, barcode_image_height = barcode_image_rendered.size
+
+        # Resize the barcode image to the new height and increase the width by 20%
+        new_width = int(barcode_image_width * (barcode_height / barcode_image_height) * 1.2)
+        barcode_image_resized = barcode_image_rendered.resize((new_width, barcode_height))
+
+        # Calculate the position for the barcode (move it to the left by 15% more)
+        barcode_position = (int(card_width * 0.15), margin + logo_height + student_name_height + margin)
+        card.paste(barcode_image_resized, barcode_position)
+
+        # Add teacher name under the barcode.
+        font_teacher_name = ImageFont.truetype("arial.ttf", 30)  # Adjust the font size as needed.
+        bbox = font_teacher_name.getbbox(teacher_name)
+        teacher_name_width = bbox[2] - bbox[0]
+        teacher_name_height = bbox[3] - bbox[1]
+
+        # Calculate the position for the teacher name (move it to the left by 15% more)
+        teacher_name_position = (int(card_width * 0.15), margin + logo_height + student_name_height + barcode_height + margin)
+        draw.text(teacher_name_position, teacher_name, fill="black", font=font_teacher_name)
+
+        # Add return information on the right side of the card.
+        return_info_font = ImageFont.truetype("arial.ttf", 20)  # Adjust the font size as needed.
+        return_info = f"Belongs to\n {organization},\n return to:\n {address},\n {state},\n {zip_code}.\n {phone_number}"
+        draw.text((int(card_width * 0.6), int(card_height * 0.4)), return_info, fill="black", font=return_info_font)
 
         # Save the ID card as an image file.
         card_filename = f"{student_name}.png"
         card_path = os.path.join(output_folder, card_filename)
         card.save(card_path)
 
+
 def main():
     # Check if a URL argument is provided
     if len(sys.argv) < 2:
         print("Error: URL not provided.")
         sys.exit(1)
-
+    
     # Get the URL from the command-line argument
     url = sys.argv[1]
 
@@ -171,17 +217,13 @@ def main():
             file_path = os.path.join(data_folder, file)
             df = pd.read_csv(file_path)
             df.to_csv(total_csv_path, mode='a', index=False, header=not os.path.exists(total_csv_path))
-            
-    # Check if a CSV file argument is provided.
-    if len(sys.argv) < 2:
-        print("Error: CSV file not provided.")
-        sys.exit(1)
 
-    # Get the CSV file path from the command-line argument.
-    csv_path = sys.argv[1]
-
-    # Generate ID cards for students without a Chromebook.
-    create_id_cards(csv_path)
-
+    # Provide the CSV path directly to the create_id_cards function.
+    create_id_cards(total_csv_path)
+    
+     # Provide the CSV path directly to the create_id_cards function.
+     #Comment out the above if you just want to test the card function
+    #csv_path = "Data/total.csv"
+    #create_id_cards(csv_path)
 if __name__ == "__main__":
     main()
