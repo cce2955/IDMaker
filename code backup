@@ -21,13 +21,12 @@ def extract_student_data(url):
     try:
         # Navigate to the provided URL.
         driver.get(url)
-        # Initialize the WebDriverWait instance.
-        wait = WebDriverWait(driver, 15)
-
-        # Identify the clickable element and click it.
-        wait.until(EC.invisibility_of_element((By.CLASS_NAME, "dw-loading-overlay")))
-        login_button = wait.until(EC.element_to_be_clickable((By.CLASS_NAME, "sso-login")))
+        # Identify the clickable element and click it
+        login_button = driver.find_element_by_class_name("sso-login")
         login_button.click()
+
+        # Add a delay to allow page load after click, if necessary
+        time.sleep(5)  # Adjust the sleep time as needed
 
         # Read the login credentials from a text file.
         with open("login.txt", "r") as file:
@@ -36,23 +35,26 @@ def extract_student_data(url):
             password = lines[1].strip()
 
         # Input the username and click the next button.
-        username_input = wait.until(EC.presence_of_element_located((By.ID, "i0116")))
+        username_input = driver.find_element_by_id("i0116")
         username_input.send_keys(username)
-        next_button = wait.until(EC.element_to_be_clickable((By.ID, "idSIButton9")))
+        next_button = driver.find_element_by_id("idSIButton9")
         next_button.click()
 
-        # Wait until the overlay disappears
-        wait.until(EC.invisibility_of_element_located((By.CLASS_NAME, "lightbox-cover")))
+        # Add a delay to allow the next form to load
+        time.sleep(15)  # Adjust the sleep time as needed
 
         # Input the password and click the sign-in button.
-        password_input = wait.until(EC.presence_of_element_located((By.ID, "i0118")))
+        password_input = driver.find_element_by_id("i0118")
         password_input.send_keys(password)
-        sign_in_button = wait.until(EC.element_to_be_clickable((By.ID, "idSIButton9")))
+        sign_in_button = driver.find_element_by_id("idSIButton9")
         sign_in_button.click()
 
-        # Wait until the "No" button is clickable, then click it.
-        no_button = wait.until(EC.element_to_be_clickable((By.ID, "idBtn_Back")))
-        no_button.click()
+        # Add a delay to allow page load after click
+        time.sleep(5)  # Adjust the sleep time as needed
+
+        # Add a delay to allow page load after click
+        time.sleep(5)  # Adjust the sleep time as needed
+
         # Use explicit wait to wait for the presence of the 'class-students' div.
         wait = WebDriverWait(driver, 300)
         div_element = wait.until(EC.presence_of_element_located((By.CLASS_NAME, "class-students")))
