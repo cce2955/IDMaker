@@ -2,6 +2,7 @@ import os
 import sys
 import time
 import pandas as pd
+import csv
 from PIL import Image, ImageDraw, ImageFont
 import traceback
 from selenium import webdriver
@@ -22,7 +23,7 @@ def extract_student_data(url):
         # Navigate to the provided URL.
         driver.get(url)
         # Initialize the WebDriverWait instance.
-        wait = WebDriverWait(driver, 15)
+        wait = WebDriverWait(driver, 50)
 
         # Identify the clickable element and click it.
         wait.until(EC.invisibility_of_element((By.CLASS_NAME, "dw-loading-overlay")))
@@ -189,7 +190,7 @@ def create_id_cards(csv_path):
     sheet = Image.new("RGB", (sheet_width, sheet_height), color="white")
 
     # Loop through the filtered DataFrame and create ID cards for each student.
-    for index, row in df.iterrows():
+    for i, (index, row) in enumerate(df.iterrows()):
         student_name = row["Student Name"]
         student_id = str(row["School ID"])  # Convert student_id to string
         teacher_name = row["Teacher"]
@@ -264,8 +265,8 @@ def create_id_cards(csv_path):
         sheet.paste(card, card_position)
         card_index += 1
 
-        # If the sheet is full or if this is the last student, save the sheet.
-        if card_index == cards_per_sheet or index == len(df) - 1:
+        # If the sheet is full or if this is the last student or if it's the last iteration, save the sheet.
+        if card_index == cards_per_sheet or index == len(df) - 1 or i == len(df) - 1:
             sheet_filename = f"Sheet_{index // cards_per_sheet + 1}"
             sheet_path_jpg = os.path.join(output_folder, f"{sheet_filename}.jpg")
             sheet_path_png = os.path.join(output_folder, f"{sheet_filename}.png")
@@ -341,18 +342,23 @@ def compile_cards_to_sheets(output_folder, formats):
                 image_path = os.path.join(output_folder, fmt, f"sheet_{i // cards_per_sheet + 1}.{fmt.lower()}")
                 sheet.save(image_path, fmt.upper())
 
+
 def main():
-    # Check if a URL argument is provided
-    if len(sys.argv) < 2:
-        print("Error: URL not provided.")
-        sys.exit(1)
+    print("Choose an input method:")
+    print("1. Provide a URL")
+    print("2. Manual input")
     
-    # Get the URL from the command-line argument
-    url = sys.argv[1]
-
-    # Call the function to extract teacher and student data and save the student data in a CSV file.
-    extract_student_data(url)
-
+    choice = input().strip()
+    
+    if choice == '1':
+        url = input("Enter the URL: ")
+        csv_path = extract_student_data(url)
+    elif choice == '2':
+        csv_path = handle_manual_input()
+    else:
+        print("Invalid choice.")
+        return
+    
     # Combine all CSV files in the "Data" folder into a single "total.csv" file.
     data_folder = "Data"
     total_csv_path = os.path.join(data_folder, "total.csv")
@@ -367,10 +373,48 @@ def main():
 
     # Provide the CSV path directly to the create_id_cards function.
     create_id_cards(total_csv_path)
+    compile_cards_to_sheets("Cards", ["PNG", "PDF"])
+    print("Process completed!")
+
+def handle_manual_input():
+    csv_path = "Data/manual.csv"
+    header = ["Teacher", "Student Name", "School ID", "Has HP Chromebook"]
     
-    # Provide the CSV path directly to the create_id_cards function.
-    # #Comment out the above if you just want to test the card function
-    #csv_path = "Data/total.csv"
-    #create_id_cards(csv_path)
+    # Check if the file exists
+    if os.path.exists(csv_path):
+        action = input("Do you want to (d)elete the existing data or (a)ppend to it? ").strip().lower()
+        if action == 'd':
+            os.remove(csv_path)
+            with open(csv_path, 'w', newline='') as f:
+                writer = csv.writer(f)
+                writer.writerow(header)
+        elif action != 'a':
+            print("Invalid choice.")
+            return csv_path
+    else:
+        # If the file doesn't exist, create it with the header
+        with open(csv_path, 'w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(header)
+    
+    while True:
+        teacher = input("Enter Teacher Name: ")
+        student = input("Enter Student Name: ")
+        school_id = input("Enter School ID: ")
+        
+        # Writing to the CSV with newline interpretation
+        with open(csv_path, 'a', newline='') as f:
+            writer = csv.writer(f)
+            row = [teacher, student, school_id, "False"]
+            writer.writerow(row)
+        
+        more = input("Add another student? (y/n): ").strip().lower()
+        if more != 'y':
+            break
+            
+    return csv_path
+
+
+
 if __name__ == "__main__":
     main()
