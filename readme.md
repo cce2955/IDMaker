@@ -1,4 +1,3 @@
-
 # Student ID Card Generator
 
 This script automates the process of generating student ID cards from provided data. Users can either supply a URL containing the relevant student data or input the data manually.
@@ -23,13 +22,13 @@ The generated ID cards can be found in the `Cards` folder. They will also be com
 ## Requirements
 
 - Python 3.x
-- Required Python libraries: `pandas`, `PIL`
+- Required Python libraries listed in `requirements.txt`.
 
 ## Setup & Run
 
-1. Install the required Python libraries.
+1. Install the required Python libraries from the `requirements.txt` file.
     ```bash
-    pip install pandas Pillow
+    pip install -r requirements.txt
     ```
 2. Run the script.
     ```bash
@@ -39,4 +38,3 @@ The generated ID cards can be found in the `Cards` folder. They will also be com
 ## Contributions
 
 Feel free to contribute to this project by opening issues or submitting pull requests for improvements and bug fixes.
-
