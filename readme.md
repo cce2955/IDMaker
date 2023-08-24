@@ -58,6 +58,8 @@ This script automates the process of generating student ID cards from provided d
 
 4. Follow onscreen instructions
 
+***Alternatively, you can run the `run.bat` file which does all this for you.***
+
 ## Contributions
 
 Feel free to contribute to this project by opening issues or submitting pull requests for improvements and bug fixes.
