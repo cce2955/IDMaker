@@ -37,14 +37,26 @@ This script automates the process of generating student ID cards from provided d
 
 ## Setup & Run
 
-1. Install the required Python libraries from the `requirements.txt` file.
+1. Create your venv and activate it
+
+   ```bash
+   python -m venv .venv
+   .venv/scripts/activate
+   ```
+
+2. Install the required Python libraries from the `requirements.txt` file.
+
     ```bash
     pip install -r requirements.txt
     ```
-2. Run the script.
+
+3. Run the script.
+
     ```bash
     python download_libraries.py
     ```
+
+4. Follow onscreen instructions
 
 ## Contributions
 
