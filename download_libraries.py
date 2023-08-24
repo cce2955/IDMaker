@@ -413,6 +413,7 @@ def main():
 
     elif choice == '6':
         print("Exiting...")
+        sys.exit(1)
         return
     else:
         print("Invalid choice.")
@@ -476,7 +477,8 @@ def handle_manual_input():
 
 
 if __name__ == "__main__":
-    main()
+    while True:
+        main()
 def create_all_cards(csv_path):
     df = pd.read_csv(csv_path, encoding="utf-8")
     df["Teacher"] = df["Teacher"].apply(lambda x: x.split()[-1])

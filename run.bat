@@ -1,25 +1,23 @@
 @echo off
-REM Check if Python is installed
-python --version >nul 2>&1
-IF %ERRORLEVEL% NEQ 0 (
-    echo Python is not installed. Please install Python and try again.
-    exit /b 1
+
+REM Check if .venv exists
+if not exist .venv\ (
+    echo Creating virtual environment...
+    python -m venv .venv
+    echo Virtual environment created.
 )
 
-REM Ask the user for a URL
-set /p url="Please enter a URL: "
-
-REM Create a virtual environment folder named .venv
-python -m venv .venv
-
 REM Activate the virtual environment
-call .venv\Scripts\activate
+call .venv\Scripts\activate.bat
 
-REM Install required libraries from requirements.txt
+REM Install requirements
+echo Installing requirements...
 pip install -r requirements.txt
+echo Requirements installed.
 
-REM Run the Python script and pass the URL as an argument
-python download_libraries.py "%url%"
+REM Run the Python script in a loop
+python download_libraries.py
+
 
 REM Deactivate the virtual environment
 deactivate
