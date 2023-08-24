@@ -378,7 +378,7 @@ def main():
         print("Process completed!")
         return
     elif choice == '5':
-        print("\\nAvailable Teachers:")
+        print("\nAvailable Teachers:")
         teachers = get_available_teachers()
         for i, teacher in enumerate(teachers, 1):
             print(f"{i}. {teacher}")
@@ -390,7 +390,7 @@ def main():
         
         selected_teacher = teachers[teacher_choice-1]
         
-        print(f"\\nStudents under {selected_teacher}:")
+        print(f"\nStudents under {selected_teacher}:")
         students = get_students_from_teacher(selected_teacher)
         for i, student in enumerate(students, 1):
             print(f"{i}. {student}")
@@ -402,17 +402,15 @@ def main():
         
         selected_student = students[student_choice-1]
         
-        # Filter and create a card only for the selected student
-        csv_path = os.path.join("Data", f"{selected_teacher}.csv")
-        df = pd.read_csv(csv_path)
-        df = df[df["Student Name"] == selected_student]
-        df.to_csv("temp_selected_student.csv", index=False)
-        
-        create_id_cards("temp_selected_student.csv", filter_chromebook=False)
-        os.remove("temp_selected_student.csv")
-        compile_cards_to_sheets("Cards", ["PNG", "PDF"])
-        print(f"\nCard generated for {selected_student}!")
-        return
+        # Filter and update the student's Chromebook status in the teacher's CSV.
+        teacher_csv_path = os.path.join("Data", f"{selected_teacher}.csv")
+        df_teacher = pd.read_csv(teacher_csv_path)
+        df_teacher.loc[df_teacher["Student Name"] == selected_student, "Has HP Chromebook"] = False
+        df_teacher.to_csv(teacher_csv_path, index=False)
+
+        print(f"\nUpdated Chromebook status for {selected_student} in {selected_teacher}.csv!")
+
+
     elif choice == '6':
         print("Exiting...")
         return
