@@ -27,6 +27,7 @@ def extract_student_data(url):
 
         # Identify the clickable element and click it.
         wait.until(EC.invisibility_of_element((By.CLASS_NAME, "dw-loading-overlay")))
+        time.sleep(3)
         login_button = wait.until(EC.element_to_be_clickable((By.CLASS_NAME, "sso-login")))
         login_button.click()
 

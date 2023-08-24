@@ -27,6 +27,7 @@ def extract_student_data(url):
 
         # Identify the clickable element and click it.
         wait.until(EC.invisibility_of_element((By.CLASS_NAME, "dw-loading-overlay")))
+        time.sleep(3)
         login_button = wait.until(EC.element_to_be_clickable((By.CLASS_NAME, "sso-login")))
         login_button.click()
 
@@ -148,15 +149,13 @@ def clear_cards_folder(output_folder):
     print(f"Recreated the '{output_folder}' folder.")
 
 
-def create_id_cards(csv_path):
-    # Load the CSV data into a DataFrame with utf-8 encoding.
+def create_id_cards(csv_path, filter_chromebook=True):
     df = pd.read_csv(csv_path, encoding="utf-8")
-    
-    # Split the teacher's name and take only the last name.
     df["Teacher"] = df["Teacher"].apply(lambda x: x.split()[-1])
-
-    # Filter out students who don't have a Chromebook.
-    df = df[df["Has HP Chromebook"] == False]
+    
+    # Filter out students who don't have a Chromebook only if filter_chromebook is True.
+    if filter_chromebook:
+        df = df[df["Has HP Chromebook"] == False]
 
     # Load the logo image.
     logo_path = "logo.jpg"  # Replace with the path to your logo image.
@@ -347,6 +346,9 @@ def main():
     print("Choose an input method:")
     print("1. Provide a URL")
     print("2. Manual input")
+    print("3. Generate all cards from total.csv regardless of Chromebook status.")
+    print("4. Generate cards only for students without a Chromebook from total.csv.")
+    print("5. Exit.")
     
     choice = input().strip()
     
@@ -355,6 +357,19 @@ def main():
         csv_path = extract_student_data(url)
     elif choice == '2':
         csv_path = handle_manual_input()
+    elif choice == '3':
+        create_id_cards("Data/total.csv", filter_chromebook=False)
+        compile_cards_to_sheets("Cards", ["PNG", "PDF"])
+        print("Process completed!")
+        return
+    elif choice == '4':
+        create_id_cards("Data/total.csv")  # filter_chromebook is True by default
+        compile_cards_to_sheets("Cards", ["PNG", "PDF"])
+        print("Process completed!")
+        return
+    elif choice == '5':
+        print("Exiting...")
+        return
     else:
         print("Invalid choice.")
         return
@@ -375,7 +390,6 @@ def main():
     create_id_cards(total_csv_path)
     compile_cards_to_sheets("Cards", ["PNG", "PDF"])
     print("Process completed!")
-
 def handle_manual_input():
     csv_path = "Data/manual.csv"
     header = ["Teacher", "Student Name", "School ID", "Has HP Chromebook"]
@@ -418,3 +432,6 @@ def handle_manual_input():
 
 if __name__ == "__main__":
     main()
+def create_all_cards(csv_path):
+    df = pd.read_csv(csv_path, encoding="utf-8")
+    df["Teacher"] = df["Teacher"].apply(lambda x: x.split()[-1])
