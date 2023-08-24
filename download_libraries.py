@@ -341,6 +341,16 @@ def compile_cards_to_sheets(output_folder, formats):
                 image_path = os.path.join(output_folder, fmt, f"sheet_{i // cards_per_sheet + 1}.{fmt.lower()}")
                 sheet.save(image_path, fmt.upper())
 
+def get_available_teachers():
+    data_folder = "Data"
+    teachers = [f[:-4] for f in os.listdir(data_folder) if f.endswith('.csv') and f != "total.csv"]
+    return teachers
+
+def get_students_from_teacher(teacher):
+    csv_path = os.path.join("Data", f"{teacher}.csv")
+    df = pd.read_csv(csv_path)
+    students = df["Student Name"].tolist()
+    return students
 
 def main():
     print("Choose an input method:")
@@ -348,10 +358,10 @@ def main():
     print("2. Manual input")
     print("3. Generate all cards from total.csv regardless of Chromebook status.")
     print("4. Generate cards only for students without a Chromebook from total.csv.")
-    print("5. Exit.")
+    print("5. Generate card for a specific student.")
+    print("6. Exit.")
     
     choice = input().strip()
-    
     if choice == '1':
         url = input("Enter the URL: ")
         csv_path = extract_student_data(url)
@@ -368,11 +378,48 @@ def main():
         print("Process completed!")
         return
     elif choice == '5':
+        print("\\nAvailable Teachers:")
+        teachers = get_available_teachers()
+        for i, teacher in enumerate(teachers, 1):
+            print(f"{i}. {teacher}")
+        
+        teacher_choice = int(input("\nSelect a teacher by number: "))
+        if teacher_choice <= 0 or teacher_choice > len(teachers):
+            print("Invalid choice.")
+            return
+        
+        selected_teacher = teachers[teacher_choice-1]
+        
+        print(f"\\nStudents under {selected_teacher}:")
+        students = get_students_from_teacher(selected_teacher)
+        for i, student in enumerate(students, 1):
+            print(f"{i}. {student}")
+        
+        student_choice = int(input("\nSelect a student by number: "))
+        if student_choice <= 0 or student_choice > len(students):
+            print("Invalid choice.")
+            return
+        
+        selected_student = students[student_choice-1]
+        
+        # Filter and create a card only for the selected student
+        csv_path = os.path.join("Data", f"{selected_teacher}.csv")
+        df = pd.read_csv(csv_path)
+        df = df[df["Student Name"] == selected_student]
+        df.to_csv("temp_selected_student.csv", index=False)
+        
+        create_id_cards("temp_selected_student.csv", filter_chromebook=False)
+        os.remove("temp_selected_student.csv")
+        compile_cards_to_sheets("Cards", ["PNG", "PDF"])
+        print(f"\nCard generated for {selected_student}!")
+        return
+    elif choice == '6':
         print("Exiting...")
         return
     else:
         print("Invalid choice.")
         return
+
     
     # Combine all CSV files in the "Data" folder into a single "total.csv" file.
     data_folder = "Data"
