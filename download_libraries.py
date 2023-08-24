@@ -37,24 +37,29 @@ def extract_student_data(url):
             username = lines[0].strip()
             password = lines[1].strip()
 
-        # Input the username and click the next button.
-        username_input = wait.until(EC.presence_of_element_located((By.ID, "i0116")))
-        username_input.send_keys(username)
-        next_button = wait.until(EC.element_to_be_clickable((By.ID, "idSIButton9")))
-        next_button.click()
+        try:
+            # Input the username and click the next button.
+            username_input = wait.until(EC.presence_of_element_located((By.ID, "i0116")))
+            username_input.send_keys(username)
+            next_button = wait.until(EC.element_to_be_clickable((By.ID, "idSIButton9")))
+            next_button.click()
 
-        # Wait until the overlay disappears
-        wait.until(EC.invisibility_of_element_located((By.CLASS_NAME, "lightbox-cover")))
+            # Wait until the overlay disappears
+            wait.until(EC.invisibility_of_element_located((By.CLASS_NAME, "lightbox-cover")))
 
-        # Input the password and click the sign-in button.
-        password_input = wait.until(EC.presence_of_element_located((By.ID, "i0118")))
-        password_input.send_keys(password)
-        sign_in_button = wait.until(EC.element_to_be_clickable((By.ID, "idSIButton9")))
-        sign_in_button.click()
+            # Input the password and click the sign-in button.
+            password_input = wait.until(EC.presence_of_element_located((By.ID, "i0118")))
+            password_input.send_keys(password)
+            sign_in_button = wait.until(EC.element_to_be_clickable((By.ID, "idSIButton9")))
+            sign_in_button.click()
 
-        # Wait until the "No" button is clickable, then click it.
-        no_button = wait.until(EC.element_to_be_clickable((By.ID, "idBtn_Back")))
-        no_button.click()
+            # Wait until the "No" button is clickable, then click it.
+            no_button = wait.until(EC.element_to_be_clickable((By.ID, "idBtn_Back")))
+            no_button.click()
+        except TimeoutException:
+            # If username field is not found, search for the data-test-id element
+            element = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, f'[data-test-id="{username}"][aria-describedby="loginHeader"]')))
+            element.click()    
         # Use explicit wait to wait for the presence of the 'class-students' div.
         wait = WebDriverWait(driver, 300)
         div_element = wait.until(EC.presence_of_element_located((By.CLASS_NAME, "class-students")))
