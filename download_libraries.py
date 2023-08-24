@@ -1,10 +1,5 @@
-import os
-import sys
-import time
-import pandas as pd
-import csv
+import os, sys, time, pandas as pd, csv,shutil, traceback
 from PIL import Image, ImageDraw, ImageFont
-import traceback
 from selenium import webdriver
 from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from selenium.webdriver.common.by import By
@@ -16,89 +11,122 @@ from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
 
 def extract_student_data(url):
-    # Create a new instance of the Firefox web driver.
+    """
+    This function is responsible for extracting student data from a given URL.
+    
+    :param url: The URL to navigate to for extracting data.
+    """
+    
+    # Initializing a new Firefox browser session using Selenium.
     driver = webdriver.Firefox()
 
     try:
-        # Navigate to the provided URL.
+        # The browser is directed to navigate to the provided URL.
         driver.get(url)
-        # Initialize the WebDriverWait instance.
+        
+        # Initialize the WebDriverWait instance with a timeout of 50 seconds. 
+        # This is used to wait for specific elements to appear on the page.
         wait = WebDriverWait(driver, 50)
 
-        # Identify the clickable element and click it.
+        # Wait until a certain overlay (loading screen/animation) disappears from the page.
         wait.until(EC.invisibility_of_element((By.CLASS_NAME, "dw-loading-overlay")))
+        # Pause the execution for 3 seconds to ensure that the page has fully loaded after the overlay disappears.
         time.sleep(3)
+        
+        # Wait for the login button to be clickable, then click it.
         login_button = wait.until(EC.element_to_be_clickable((By.CLASS_NAME, "sso-login")))
         login_button.click()
 
-        # Read the login credentials from a text file.
+        # Read login credentials (username and password) from a local file named 'login.txt'.
         with open("login.txt", "r") as file:
             lines = file.readlines()
             username = lines[0].strip()
             password = lines[1].strip()
 
         try:
-            # Input the username and click the next button.
+            # Locate the username input field, enter the username, then click the 'next' button.
             username_input = wait.until(EC.presence_of_element_located((By.ID, "i0116")))
             username_input.send_keys(username)
+            
             next_button = wait.until(EC.element_to_be_clickable((By.ID, "idSIButton9")))
             next_button.click()
 
-            # Wait until the overlay disappears
+            # After entering the username, wait for a potential overlay to disappear.
             wait.until(EC.invisibility_of_element_located((By.CLASS_NAME, "lightbox-cover")))
-
-            # Input the password and click the sign-in button.
+            time.sleep(3)
+            # Locate the password input field, enter the password, then click the sign-in button.
             password_input = wait.until(EC.presence_of_element_located((By.ID, "i0118")))
             password_input.send_keys(password)
+            
             sign_in_button = wait.until(EC.element_to_be_clickable((By.ID, "idSIButton9")))
             sign_in_button.click()
 
-            # Wait until the "No" button is clickable, then click it.
+            # After signing in, click the 'No' button
+        
             no_button = wait.until(EC.element_to_be_clickable((By.ID, "idBtn_Back")))
             no_button.click()
+            
         except TimeoutException:
-            # If username field is not found, search for the data-test-id element
+        
+            # If, for any reason, the standard login fields aren't found, try a different method 
+            # (using a data-test-id attribute, for instance).
+        
             element = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, f'[data-test-id="{username}"][role="button"]')))
             element.click()    
-        # Use explicit wait to wait for the presence of the 'class-students' div.
+        
+        # Wait for the presence of a div that contains student information.
         wait = WebDriverWait(driver, 300)
         div_element = wait.until(EC.presence_of_element_located((By.CLASS_NAME, "class-students")))
         print("The 'class-students' div exists on the webpage.")
 
-        # Use explicit wait to wait for the presence of the 'class-teacher' divs.
+        # Wait for elements that contain teacher information to be present on the page.
         teacher_elements = wait.until(EC.presence_of_all_elements_located((By.CLASS_NAME, "class-teacher")))
+        
+        
+        # Debugging: Print the located teacher elements for verification.
         print("Teacher Elements:")
         print(teacher_elements)
 
-        # Extract teacher names from the 'class-teacher' divs.
+        # Initialize an empty list to store the names of the teachers.
         teacher_names = []
+        
+        # Iterate through each teacher element to extract the teacher's name.
         for elem in teacher_elements:
             try:
+                # Within each teacher element, find the child element containing the teacher's name.
                 teacher_name_elem = elem.find_element(By.XPATH, ".//div[contains(@class, 'user-name')]")
+                
+                # Add the extracted teacher's name to the list.
                 teacher_names.append(teacher_name_elem.text)
             except NoSuchElementException:
+                # In case the expected structure isn't found, this handles the exception and 
+                # informs that the specific sub-element was not found.
                 print("Could not find 'user-name' div inside 'class-teacher' div.")
 
+        # Debugging: Print the extracted teacher names for verification.
         print("Teacher Names:")
         print(teacher_names)
 
+        # The next block is focused on extracting student data.
         try:
-            # Use explicit wait to wait for the presence of the rows containing student data.
+            # Wait for the rows of data containing student information to appear on the page.
             student_rows = wait.until(EC.presence_of_all_elements_located((By.XPATH, "//spark-grid-row[contains(@class, 'ng-scope ng-isolate-scope')]")))
             print("Student Rows:")
             print(student_rows)
 
-            # Extract data for each student.
+            # Initialize an empty list to store the extracted student data.
             student_data = []
+            
+            # Iterate through each row to extract the data for individual students.
             for row in student_rows:
                 try:
-                    # Extract student name and school ID number.
+                    # Extract the student's name and school ID number from the row.
                     student_name_elem = row.find_element(By.XPATH, ".//span[contains(@ng-bind-html, '$ctrl.Data.Name')]")
                     school_id_elem = row.find_element(By.XPATH, ".//span[contains(@ng-bind-html, '$ctrl.Data.SchoolIdNumber')]")
                     student_name = student_name_elem.text
                     school_id = school_id_elem.text
 
-                    # Check for the existence of the model.
+                    # For each student, also check if they possess a certain model of a Chromebook.
                     model_elements = row.find_elements(By.XPATH, ".//span[contains(@ng-bind, '$ctrl.SelectedAsset.Model.Name')]")
                     has_hp_chromebook = False
                     for model_elem in model_elements:
@@ -106,50 +134,73 @@ def extract_student_data(url):
                         if model_name == "HP Chromebook 11 G9 EE":
                             has_hp_chromebook = True
 
-                    # Append the student data to the list.
+                    # Append the extracted data for the current student to the list.
                     student_data.append({"Teacher": teacher_names[0], "Student Name": student_name, "School ID": school_id, "Has HP Chromebook": has_hp_chromebook})
 
                 except NoSuchElementException as e:
+                    # Handle potential issues if expected elements aren't found.
                     print("Invalid URL: The 'class-students' div does not exist on the webpage.")
                 except Exception as e:
+                    # Generic exception handler for unexpected issues.
                     print("Error occurred:")
                     traceback.print_exc()
 
+            # Debugging: Print the extracted student data for verification.
             print("Student Data:")
             print(student_data)
 
-            # Create a DataFrame to store the student data.
+            # Convert the list of student data into a DataFrame for easier data manipulation and storage.
             student_df = pd.DataFrame(student_data)
 
-            # Get the teacher name (use the first teacher name if there are multiple teachers).
+            # If there are multiple teachers, just use the first one's name as the filename.
             teacher_name = teacher_names[0]
 
-            # Save the student DataFrame to a CSV file named after the teacher.
+            # Save the DataFrame to a CSV file. The filename is based on the teacher's name.
             csv_path = os.path.join("Data", f"{teacher_name}.csv")
             student_df.to_csv(csv_path, index=False)
 
+        # Handle potential exceptions during the student data extraction process.
         except TimeoutException as e:
             print("TimeoutException: The rows containing student data did not load within the specified timeout.")
         except Exception as e:
             print("Error occurred:")
             traceback.print_exc()
-
     finally:
         # Close the web browser.
         driver.quit()
 
-import shutil
+
 
 def clear_cards_folder(output_folder):
-    # Delete the entire "Cards" folder if it exists.
+    """
+    Clear the specified folder by deleting it, then recreate it.
+
+    This function is designed to ensure that a given folder is empty and ready
+    for new content. The primary use case is to prepare the folder for a new batch
+    of cards.
+
+    Parameters:
+    - output_folder (str): The path to the folder to be cleared.
+
+    Note:
+    This function will delete the entire folder and its content. Ensure that
+    no important data is present in the folder before calling this function.
+
+    Raises:
+    - Exception: If there's an error during the folder deletion.
+    """
+
+    # Check if the specified folder exists.
     if os.path.exists(output_folder):
         try:
+            # Attempt to delete the entire folder.
             shutil.rmtree(output_folder)
             print(f"Deleted the '{output_folder}' folder.")
         except Exception as e:
+            # Log any errors encountered during deletion.
             print(f"Error while deleting the '{output_folder}' folder: {e}")
 
-    # Recreate the "Cards" folder.
+    # Recreate the folder to ensure a clean slate.
     os.makedirs(output_folder)
     print(f"Recreated the '{output_folder}' folder.")
 
