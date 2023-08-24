@@ -58,7 +58,7 @@ def extract_student_data(url):
             no_button.click()
         except TimeoutException:
             # If username field is not found, search for the data-test-id element
-            element = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, f'[data-test-id="{username}"][aria-describedby="loginHeader"]')))
+            element = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, f'[data-test-id="{username}"][role="button"]')))
             element.click()    
         # Use explicit wait to wait for the presence of the 'class-students' div.
         wait = WebDriverWait(driver, 300)
