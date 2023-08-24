@@ -2,5 +2,5 @@ Data/
 Cards/
 cardinfo/org_info.txt
 logo.jpg
-.venv
+.venv/
 login.txt
